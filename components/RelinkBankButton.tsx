@@ -4,11 +4,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { PlaidLinkOnSuccess, PlaidLinkOptions, usePlaidLink } from 'react-plaid-link';
 import { useRouter } from 'next/navigation';
-import { createLinkToken, updateBankAccount } from '@/lib/actions/user.actions';
-import { exchangePublicToken } from '@/lib/actions/user.actions';
+import { createLinkToken } from '@/lib/actions/user.actions';
+import toast from 'react-hot-toast';
 
 interface RelinkBankButtonProps {
-  user: any;
+  user: User;
   bankId: string;
   variant?: "primary" | "ghost";
 }
@@ -20,52 +20,39 @@ const RelinkBankButton = ({ user, bankId, variant = "primary" }: RelinkBankButto
   useEffect(() => {
     const getLinkToken = async () => {
       const data = await createLinkToken(user);
-      setToken(data?.linkToken);
+      setToken(data?.linkToken ?? '');
     };
-
     getLinkToken();
   }, [user]);
 
   const onSuccess = useCallback<PlaidLinkOnSuccess>(async (public_token: string) => {
     try {
-      // Exchange the public token for an access token
       const response = await fetch('/api/plaid/exchange-token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          publicToken: public_token,
-          bankId: bankId,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicToken: public_token, bankId }),
       });
 
       if (response.ok) {
-        // Force refresh by adding a timestamp to the URL
+        toast.success('Bank account re-linked successfully');
         router.push(`/?refresh=${Date.now()}`);
-        
-        // Force a full page refresh to ensure all data is updated
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
+        setTimeout(() => window.location.reload(), 100);
+      } else {
+        toast.error('Failed to re-link bank account');
       }
-    } catch (error) {
-      console.error('Error updating bank account:', error);
+    } catch {
+      toast.error('Failed to re-link bank account');
     }
-  }, [user, bankId, router]);
+  }, [bankId, router]);
 
-  const config: PlaidLinkOptions = {
-    token,
-    onSuccess
-  };
-
+  const config: PlaidLinkOptions = { token, onSuccess };
   const { open, ready } = usePlaidLink(config);
 
   return (
     <Button
       onClick={() => open()}
       disabled={!ready}
-      variant={variant}
+      variant={variant === "primary" ? "default" : variant}
       className="plaidlink-primary"
     >
       Re-link Bank Account
@@ -73,4 +60,4 @@ const RelinkBankButton = ({ user, bankId, variant = "primary" }: RelinkBankButto
   );
 };
 
-export default RelinkBankButton; 
+export default RelinkBankButton;

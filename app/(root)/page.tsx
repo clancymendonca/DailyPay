@@ -1,14 +1,14 @@
 import HeaderBox from '@/components/HeaderBox'
+import PlaidLink from '@/components/PlaidLink';
 import RecentTransactions from '@/components/RecentTransactions';
 import RightSidebar from '@/components/RightSidebar';
 import TotalBalanceBox from '@/components/TotalBalanceBox';
 import { getAccount, getAccounts } from '@/lib/actions/bank.actions';
 import { getLoggedInUser } from '@/lib/actions/user.actions';
 
-// Force dynamic rendering to ensure fresh data
 export const dynamic = 'force-dynamic';
 
-const Home = async ({ searchParams: { id, page, refresh } }: SearchParamProps) => {
+const Home = async ({ searchParams: { id, page } }: SearchParamProps) => {
   const currentPage = Number(page as string) || 1;
   const loggedIn = await getLoggedInUser();
   
@@ -29,38 +29,24 @@ const Home = async ({ searchParams: { id, page, refresh } }: SearchParamProps) =
     );
   }
 
-  console.log("Home page - User logged in:", loggedIn.$id);
-
   const accounts = await getAccounts({ 
-    userId: loggedIn?.$id 
+    userId: loggedIn.$id 
   });
 
-  console.log("Home page - Accounts result:", {
-    hasAccounts: !!accounts,
-    accountCount: accounts?.data?.length || 0,
-  });
-
-  // Ensure accounts has a valid structure
   const accountsData = accounts?.data || [];
   const appwriteItemId = (id as string) || accountsData[0]?.appwriteItemId;
 
-  console.log("Home page - Selected account:", {
-    appwriteItemId,
-    hasId: !!appwriteItemId,
-  });
+  const accountResults = await Promise.all(
+    accountsData.map(async (a: Account) => {
+      const result = await getAccount({ appwriteItemId: a.appwriteItemId });
+      return [a.appwriteItemId, result?.transactions ?? []] as const;
+    })
+  );
 
-  // Only try to get account details if we have an appwriteItemId
-  let account = null;
-  if (appwriteItemId) {
-    console.log("Home page - Fetching account details...");
-    account = await getAccount({ appwriteItemId });
-    
-    console.log("Home page - Account details result:", {
-      hasAccount: !!account,
-      hasTransactions: !!account?.transactions,
-      transactionCount: account?.transactions?.length || 0,
-    });
-  }
+  const transactionsByAccountId = Object.fromEntries(accountResults) as Record<string, Transaction[]>;
+  const sidebarTransactions = appwriteItemId
+    ? transactionsByAccountId[appwriteItemId] ?? []
+    : [];
 
   return (
     <section className="home">
@@ -69,7 +55,7 @@ const Home = async ({ searchParams: { id, page, refresh } }: SearchParamProps) =
           <HeaderBox 
             type="greeting"
             title="Welcome"
-            user={loggedIn?.firstName || 'Guest'}
+            user={loggedIn.firstName || 'Guest'}
             subtext="Access and manage your account and transactions efficiently."
           />
 
@@ -80,17 +66,29 @@ const Home = async ({ searchParams: { id, page, refresh } }: SearchParamProps) =
           />
         </header>
 
-        <RecentTransactions 
-          accounts={accountsData}
-          appwriteItemId={appwriteItemId || ''}
-          page={currentPage}
-        />
+        {accountsData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-gray-200 bg-white p-12 text-center">
+            <h2 className="text-18 font-semibold text-gray-900">No bank accounts connected</h2>
+            <p className="text-14 text-gray-500 max-w-md">
+              Connect your first bank account to view balances, track transactions, and transfer funds.
+            </p>
+            <PlaidLink user={loggedIn} variant="primary" />
+          </div>
+        ) : (
+          <RecentTransactions 
+            accounts={accountsData}
+            appwriteItemId={appwriteItemId || ''}
+            page={currentPage}
+            user={loggedIn}
+            transactionsByAccountId={transactionsByAccountId}
+          />
+        )}
       </div>
 
       <RightSidebar 
         user={loggedIn}
-        transactions={account?.transactions || []}
-        banks={accountsData?.slice(0, 2) || []}
+        transactions={sidebarTransactions}
+        banks={accountsData.slice(0, 2)}
       />
     </section>
   )

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm run test
+
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_APPWRITE_ENDPOINT: https://example.com
+          NEXT_PUBLIC_APPWRITE_PROJECT: test
+          NEXT_APPWRITE_KEY: test
+          APPWRITE_DATABASE_ID: test
+          APPWRITE_USER_COLLECTION_ID: test
+          APPWRITE_BANK_COLLECTION_ID: test
+          APPWRITE_TRANSACTION_COLLECTION_ID: test
+          PLAID_CLIENT_ID: test
+          PLAID_SECRET: test
+          PLAID_ENV: sandbox
+          DWOLLA_ENV: sandbox
+          DWOLLA_KEY: test
+          DWOLLA_SECRET: test

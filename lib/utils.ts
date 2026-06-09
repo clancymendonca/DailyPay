@@ -201,16 +201,14 @@ export const getTransactionStatus = (date: Date) => {
 };
 
 export const authFormSchema = (type: string) => z.object({
-  // sign up
   firstName: type === 'sign-in' ? z.string().optional() : z.string().min(3),
   lastName: type === 'sign-in' ? z.string().optional() : z.string().min(3),
   address1: type === 'sign-in' ? z.string().optional() : z.string().max(50),
   city: type === 'sign-in' ? z.string().optional() : z.string().max(50),
-  state: type === 'sign-in' ? z.string().optional() : z.string().min(2).max(2),
-  postalCode: type === 'sign-in' ? z.string().optional() : z.string().min(3).max(6),
-  dateOfBirth: type === 'sign-in' ? z.string().optional() : z.string().min(3),
-  ssn: type === 'sign-in' ? z.string().optional() : z.string().min(3),
-  // both
+  state: type === 'sign-in' ? z.string().optional() : z.string().length(2, 'State must be a 2-letter abbreviation'),
+  postalCode: type === 'sign-in' ? z.string().optional() : z.string().regex(/^\d{5}(-\d{4})?$/, 'Enter a valid US postal code'),
+  dateOfBirth: type === 'sign-in' ? z.string().optional() : z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  ssn: type === 'sign-in' ? z.string().optional() : z.string().regex(/^\d{9}$/, 'SSN must be 9 digits'),
   email: z.string().email(),
   password: z.string().min(8),
 })

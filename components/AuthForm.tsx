@@ -20,12 +20,15 @@ import {
 import { Input } from "@/components/ui/input"
 import CustomInput from './CustomInput';
 import { authFormSchema } from '@/lib/utils';
+import { getSafeRedirectPath } from '@/lib/redirect';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { getLoggedInUser, signIn, signUp } from '@/lib/actions/user.actions';
+import { signIn, signUp } from '@/lib/actions/user.actions';
 import PlaidLink from './PlaidLink';
+import GoogleSignInButton from './GoogleSignInButton';
+import toast from 'react-hot-toast';
 
-const AuthForm = ({ type }: { type: string }) => {
+const AuthForm = ({ type, redirect }: { type: string; redirect?: string }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,14 +77,14 @@ const AuthForm = ({ type }: { type: string }) => {
           })
 
           if(response) {
-            router.push('/')
+            toast.success('Signed in successfully');
+            router.push(getSafeRedirectPath(redirect));
           } else {
-            console.error('Sign-in failed - no response received')
-            // You could add a toast notification here
+            toast.error('Invalid email or password');
           }
         }
       } catch (error) {
-        console.log(error);
+        toast.error(type === 'sign-in' ? 'Sign in failed' : 'Sign up failed');
       } finally {
         setIsLoading(false);
       }
@@ -158,6 +161,7 @@ const AuthForm = ({ type }: { type: string }) => {
                   ) : type === 'sign-in' 
                     ? 'Sign In' : 'Sign Up'}
                 </Button>
+                {type === 'sign-in' && <GoogleSignInButton />}
               </div>
             </form>
           </Form>
@@ -171,6 +175,12 @@ const AuthForm = ({ type }: { type: string }) => {
             <Link href={type === 'sign-in' ? '/sign-up' : '/sign-in'} className="form-link">
               {type === 'sign-in' ? 'Sign up' : 'Sign in'}
             </Link>
+            {type === 'sign-in' && (
+              <>
+                {' · '}
+                <Link href="/forgot-password" className="form-link">Forgot password?</Link>
+              </>
+            )}
           </footer>
         </>
       )}

@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Daily Pay
 
-## Getting Started
+A modern banking dashboard built with Next.js 14. Connect bank accounts via Plaid, track transactions, and transfer funds with Dwolla — backed by Appwrite for auth and data storage.
 
-First, run the development server:
+## Architecture
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+Browser (Next.js App Router)
+    ├── Appwrite — authentication, user/bank/transaction/audit documents
+    ├── Plaid — bank linking, balances, transaction sync + webhooks
+    └── Dwolla — ACH transfers between funding sources
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Prerequisites
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 20+
+- Appwrite project with Auth (email/password + optional Google OAuth)
+- Plaid sandbox credentials
+- Dwolla sandbox credentials
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Setup
 
-## Learn More
+```bash
+cp .env.example .env.local
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Appwrite collections
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Create indexes on:
+- **Transactions**: `senderBankId`, `receiverBankId`, `senderId`, `receiverId`
+- **Banks**: `shareableId`, `bankId` (Plaid item ID), `userId`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+**Banks** — add fields: `transactionsCursor` (string), `needsRelink` (boolean)
 
-## Deploy on Vercel
+**Transactions** — optional: `dwollaTransferUrl` (string)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Audit** (optional) — `userId`, `action`, `metadata`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript check |
+| `npm run test` | Vitest unit tests |
+| `npm run test:e2e` | Playwright E2E tests |
+| `npm run format` | Prettier format |
+
+## Plaid webhooks
+
+Register `https://your-domain.com/api/plaid/webhook` in the Plaid Dashboard for:
+- `TRANSACTIONS` / `SYNC_UPDATES_AVAILABLE`
+- `ITEM` / `ERROR`, `PENDING_EXPIRATION`
+
+## Deployment (Vercel)
+
+Set all variables from `.env.example`. Required for build:
+- All `APPWRITE_*`, `PLAID_*`, `DWOLLA_*` variables
+- Optional: `ENCRYPTION_KEY` (32+ chars) to encrypt bank tokens at rest
+- Optional: `APPWRITE_AUDIT_COLLECTION_ID` for audit logging
+
+Use separate Appwrite/Plaid/Dwolla projects for staging vs production.
+
+## Security
+
+- Route protection via `middleware.ts`
+- Server actions verify bank ownership before reads/writes
+- Transfers go through `initiateTransfer` server action only
+- API routes rate-limited (in-memory; use Redis in production)
+- Sandbox SSN defaults gated behind `DWOLLA_ENV=sandbox`
+
+## Health check
+
+`GET /api/health` returns `{ status: "ok" }`
