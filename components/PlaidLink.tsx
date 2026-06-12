@@ -1,9 +1,12 @@
+"use client";
+
 import React, { useCallback, useEffect, useState } from 'react'
 import { Button } from './ui/button'
 import { PlaidLinkOnSuccess, PlaidLinkOptions, usePlaidLink } from 'react-plaid-link'
 import { useRouter } from 'next/navigation';
 import { createLinkToken, exchangePublicToken } from '@/lib/actions/user.actions';
 import Image from 'next/image';
+import toast from 'react-hot-toast';
 
 const PlaidLink = ({ user, variant }: PlaidLinkProps) => {
   const router = useRouter();
@@ -21,20 +24,23 @@ const PlaidLink = ({ user, variant }: PlaidLinkProps) => {
   }, [user]);
 
   const onSuccess = useCallback<PlaidLinkOnSuccess>(async (public_token: string) => {
-    await exchangePublicToken({
-      publicToken: public_token,
-      user,
-    })
+    try {
+      await exchangePublicToken({
+        publicToken: public_token,
+        user,
+      })
 
-    // Force refresh by adding a timestamp to the URL
-    router.push(`/?refresh=${Date.now()}`);
-    
-    // Force a full page refresh to ensure all data is updated
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
-  }, [user])
-  
+      toast.success('Bank account connected successfully');
+      router.push(`/?refresh=${Date.now()}`);
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    } catch {
+      toast.error('Failed to connect bank account');
+    }
+  }, [user, router])
+
   const config: PlaidLinkOptions = {
     token,
     onSuccess

@@ -20,13 +20,14 @@ export const createTransaction = async (transaction: CreateTransactionProps) => 
       {
         channel: 'online',
         category: 'Transfer',
-        ...transaction
+        ...transaction,
+        dwollaTransferUrl: transaction.dwollaTransferUrl ?? '',
       }
     )
 
     return parseStringify(newTransaction);
   } catch (error) {
-    console.log(error);
+    console.error("Error creating transaction:", error);
     return null;
   }
 }
@@ -39,27 +40,67 @@ export const getTransactionsByBankId = async ({bankId}: getTransactionsByBankIdP
 
     const { database } = await createAdminClient();
 
-    // Try to get transactions where this bank is the sender or receiver
-    // Use a more general query that doesn't rely on specific field names
-    const allTransactions = await database.listDocuments(
-      DATABASE_ID!,
-      TRANSACTION_COLLECTION_ID!,
-      [], // No filters - get all transactions
-    );
+    const [senderResult, receiverResult] = await Promise.all([
+      database.listDocuments(
+        DATABASE_ID!,
+        TRANSACTION_COLLECTION_ID!,
+        [Query.equal('senderBankId', bankId), Query.limit(100)]
+      ),
+      database.listDocuments(
+        DATABASE_ID!,
+        TRANSACTION_COLLECTION_ID!,
+        [Query.equal('receiverBankId', bankId), Query.limit(100)]
+      ),
+    ]);
 
-    // Filter transactions in memory where this bank is involved
-    const relevantTransactions = allTransactions.documents.filter((transaction: any) => {
-      return transaction.senderBankId === bankId || transaction.receiverBankId === bankId;
+    const merged = new Map<string, Transaction>();
+    for (const doc of [...senderResult.documents, ...receiverResult.documents]) {
+      merged.set(doc.$id, doc as unknown as Transaction);
+    }
+
+    const documents = Array.from(merged.values());
+
+    return parseStringify({
+      total: documents.length,
+      documents,
     });
-
-    const transactions = {
-      total: relevantTransactions.length,
-      documents: relevantTransactions
-    };
-
-    return parseStringify(transactions);
   } catch (error) {
-    console.log("Error getting transactions by bank ID:", error);
+    console.error("Error getting transactions by bank ID:", error);
     return { total: 0, documents: [] };
+  }
+}
+
+export const getUserTransfers = async ({ userId }: { userId: string }) => {
+  try {
+    if (!userId) return [];
+
+    const { database } = await createAdminClient();
+
+    const [sent, received] = await Promise.all([
+      database.listDocuments(
+        DATABASE_ID!,
+        TRANSACTION_COLLECTION_ID!,
+        [Query.equal('senderId', userId), Query.orderDesc('$createdAt'), Query.limit(100)]
+      ),
+      database.listDocuments(
+        DATABASE_ID!,
+        TRANSACTION_COLLECTION_ID!,
+        [Query.equal('receiverId', userId), Query.orderDesc('$createdAt'), Query.limit(100)]
+      ),
+    ]);
+
+    const merged = new Map<string, Transaction>();
+    for (const doc of [...sent.documents, ...received.documents]) {
+      merged.set(doc.$id, doc as unknown as Transaction);
+    }
+
+    return parseStringify(
+      Array.from(merged.values()).sort(
+        (a, b) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime()
+      )
+    );
+  } catch (error) {
+    console.error("Error getting user transfers:", error);
+    return [];
   }
 }

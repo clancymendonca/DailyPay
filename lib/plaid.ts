@@ -1,11 +1,14 @@
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
+import { env } from './env';
+
+const basePath = PlaidEnvironments[env.PLAID_ENV] ?? PlaidEnvironments.sandbox;
 
 const configuration = new Configuration({
-  basePath: PlaidEnvironments.sandbox,
+  basePath,
   baseOptions: {
     headers: {
-      'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-      'PLAID-SECRET': process.env.PLAID_SECRET,
+      'PLAID-CLIENT-ID': env.PLAID_CLIENT_ID,
+      'PLAID-SECRET': env.PLAID_SECRET,
     }
   }
 })

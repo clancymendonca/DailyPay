@@ -3,10 +3,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
 import Copy from './Copy'
+import DisconnectBankButton from './DisconnectBankButton'
 
-const BankCard = ({ account, userName, showBalance = true }: CreditCardProps) => {
-
-  console.log(account);
+const BankCard = ({ account, userName, showBalance = true, bankId }: CreditCardProps) => {
   return (
     <div className="flex flex-col">
       <Link href={`/transaction-history/?id=${account.appwriteItemId}`} className="bank-card">
@@ -52,7 +51,7 @@ const BankCard = ({ account, userName, showBalance = true }: CreditCardProps) =>
         </div>
 
         <Image 
-          src="/icons/lines.png"
+          src="/icons/Lines.svg"
           width={316}
           height={190}
           alt="lines"
@@ -60,7 +59,8 @@ const BankCard = ({ account, userName, showBalance = true }: CreditCardProps) =>
         />
       </Link>
 
-      {showBalance && <Copy title={account?.sharaebleId} />}
+      {showBalance && account?.shareableId && <Copy title={account.shareableId} />}
+      {bankId && <DisconnectBankButton bankId={bankId} />}
     </div>
   )
 }

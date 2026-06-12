@@ -75,11 +75,12 @@ declare type Transaction = {
   category: string;
   date: string;
   image: string;
-  type: string;
   $createdAt: string;
   channel: string;
   senderBankId: string;
   receiverBankId: string;
+  senderId?: string;
+  receiverId?: string;
 };
 
 declare type Bank = {
@@ -90,6 +91,8 @@ declare type Bank = {
   fundingSourceUrl: string;
   userId: string;
   shareableId: string;
+  transactionsCursor?: string;
+  needsRelink?: boolean;
 };
 
 declare type AccountTypes =
@@ -141,6 +144,7 @@ declare interface CreditCardProps {
   account: Account;
   userName: string;
   showBalance?: boolean;
+  bankId?: string;
 }
 
 declare interface BankInfoProps {
@@ -175,7 +179,7 @@ declare interface PaginationProps {
 
 declare interface PlaidLinkProps {
   user: User;
-  variant?: "primary" | "ghost";
+  variant?: "primary" | "ghost" | "sidebar";
   dwollaCustomerId?: string;
 }
 
@@ -226,9 +230,10 @@ declare interface SiderbarProps {
 
 declare interface RecentTransactionsProps {
   accounts: Account[];
-  transactions?: Transaction[];
   appwriteItemId: string;
   page: number;
+  user: User;
+  transactionsByAccountId: Record<string, Transaction[]>;
 }
 
 declare interface TransactionHistoryTableProps {
@@ -288,6 +293,7 @@ declare interface CreateTransactionProps {
   receiverId: string;
   receiverBankId: string;
   email: string;
+  dwollaTransferUrl?: string;
 }
 
 declare interface getTransactionsByBankIdProps {
@@ -323,6 +329,11 @@ declare interface getBanksProps {
 
 declare interface getBankProps {
   documentId: string;
+  requesterId?: string;
+}
+
+declare interface getBankByShareableIdProps {
+  shareableId: string;
 }
 
 declare interface getBankByAccountIdProps {
